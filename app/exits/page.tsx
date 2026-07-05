@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import MainLayout from '@/components/main-layout';
-import { getExits, getExitById, getActiveClients, createExit, deleteExit } from '@/lib/api';
-import { Search, Plus, Download, MoreVertical, ChevronLeft, ChevronRight, Users, Filter, X, Eye, Trash2 } from 'lucide-react';
+import { getExits, getExitById, getActiveClients, createExit, deleteExit, getProducts } from '@/lib/api';
+import { Search, Plus, Download, ChevronLeft, ChevronRight, Filter, X, Eye, Trash2 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Modal } from '@/components/ui/modal';
 import { showToast } from '@/components/ui/toast';
@@ -22,11 +23,30 @@ export default function ExitsPage() {
   const [showDetail, setShowDetail] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    clientId: '',
+    documentNumber: '',
+    exitDate: new Date().toISOString().split('T')[0],
+    items: [{ productId: '', quantity: '', unitPrice: '' }],
+  });
 
   useEffect(() => {
     loadClients();
+    loadProducts();
     loadExits();
   }, [page, search, clientId, startDate, endDate]);
+
+  const loadProducts = async () => {
+    try {
+      const res = await getProducts(1, 100);
+      setProducts(Array.isArray(res) ? res : res.data || []);
+    } catch (error) {
+      console.error('[v0] Error loading products:', error);
+    }
+  };
 
   const loadClients = async () => {
     try {
@@ -78,6 +98,114 @@ export default function ExitsPage() {
     }
   };
 
+  const handleOpenCreateModal = () => {
+    setFormData({
+      clientId: '',
+      documentNumber: '',
+      exitDate: new Date().toISOString().split('T')[0],
+      items: [{ productId: '', quantity: '', unitPrice: '' }],
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleAddItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, { productId: '', quantity: '', unitPrice: '' }],
+    }));
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleItemChange = (index: number, field: 'productId' | 'quantity' | 'unitPrice', value: string) => {
+    setFormData(prev => {
+      const items = [...prev.items];
+      items[index] = { ...items[index], [field]: value };
+      return { ...prev, items };
+    });
+  };
+
+  const handleCreate = async () => {
+    try {
+      if (!formData.clientId || !formData.documentNumber) {
+        showToast('Completa el cliente y el número de documento', 'error');
+        return;
+      }
+
+      const items = formData.items.filter(
+        item => item.productId && item.quantity && item.unitPrice
+      );
+
+      if (items.length === 0) {
+        showToast('Agrega al menos un producto válido', 'error');
+        return;
+      }
+
+      setIsSubmitting(true);
+      await createExit({
+        clientId: formData.clientId,
+        documentNumber: formData.documentNumber,
+        exitDate: formData.exitDate,
+        items: items.map(item => ({
+          productId: item.productId,
+          quantity: parseInt(item.quantity),
+          unitPrice: parseFloat(item.unitPrice),
+        })),
+      });
+
+      showToast('Salida creada correctamente', 'success');
+      setShowCreateModal(false);
+      loadExits();
+    } catch (error: any) {
+      console.error('[v0] Error creating exit:', error);
+      showToast(error.message || 'Error al crear salida', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const data = await getExits(1, 1000, search, clientId);
+      const rows = (data.data || []).map((exit: any) => ({
+        'N° Salida': exit.exitNumber,
+        Fecha: new Date(exit.exitDate).toLocaleDateString('es-NI'),
+        Cliente: exit.client?.name || '',
+        Documento: exit.documentNumber,
+        'Total ítems': exit.items?.length || 0,
+        Total: parseFloat(exit.totalAmount || 0).toFixed(2),
+      }));
+
+      if (rows.length === 0) {
+        showToast('No hay salidas para exportar', 'error');
+        return;
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Salidas');
+      XLSX.writeFile(workbook, `salidas-${new Date().toISOString().split('T')[0]}.xlsx`);
+      showToast('Salidas exportadas correctamente', 'success');
+    } catch (error: any) {
+      console.error('[v0] Error exporting exits:', error);
+      showToast(error.message || 'Error al exportar salidas', 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const formTotal = formData.items.reduce((sum, item) => {
+    const qty = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.unitPrice) || 0;
+    return sum + qty * price;
+  }, 0);
+
   const totalPages = Math.ceil(total / 10);
 
   return (
@@ -89,11 +217,18 @@ export default function ExitsPage() {
             <p className="text-muted-foreground">Registro de salidas de inventario</p>
           </div>
           <div className="flex gap-2">
-            <button className="flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
+            >
               <Download size={20} />
-              Exportar
+              {isExporting ? 'Exportando...' : 'Exportar'}
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <button
+              onClick={handleOpenCreateModal}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
               <Plus size={20} />
               Nueva Salida
             </button>
@@ -336,6 +471,119 @@ export default function ExitsPage() {
             </div>
           </div>
         )}
+
+        <Modal
+          isOpen={showCreateModal}
+          title="Nueva Salida de Inventario"
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreate}
+          submitLabel="Crear Salida"
+          isLoading={isSubmitting}
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Cliente</label>
+                <select
+                  value={formData.clientId}
+                  onChange={e => setFormData({ ...formData, clientId: e.target.value })}
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Selecciona cliente</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Número de Documento</label>
+                <input
+                  type="text"
+                  placeholder="Ej: FAC-2024-001"
+                  value={formData.documentNumber}
+                  onChange={e => setFormData({ ...formData, documentNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Fecha de Salida</label>
+              <input
+                type="date"
+                value={formData.exitDate}
+                onChange={e => setFormData({ ...formData, exitDate: e.target.value })}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <label className="block text-sm font-medium text-foreground">Productos</label>
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  className="text-sm text-primary hover:underline"
+                >
+                  + Agregar
+                </button>
+              </div>
+              <div className="space-y-3 max-h-48 overflow-y-auto">
+                {formData.items.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <select
+                        value={item.productId}
+                        onChange={e => handleItemChange(idx, 'productId', e.target.value)}
+                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      >
+                        <option value="">Selecciona producto</option>
+                        {products.map(prod => (
+                          <option key={prod.id} value={prod.id}>
+                            {prod.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Cant."
+                      value={item.quantity}
+                      onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                      className="w-20 px-2 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Precio"
+                      value={item.unitPrice}
+                      onChange={e => handleItemChange(idx, 'unitPrice', e.target.value)}
+                      className="w-24 px-2 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    />
+                    {formData.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(idx)}
+                        className="px-2 py-2 text-red-600 hover:bg-red-100 rounded"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-3 text-right">
+              <p className="text-lg font-bold text-foreground">Total: C$ {formTotal.toFixed(2)}</p>
+            </div>
+          </div>
+        </Modal>
       </div>
     </MainLayout>
   );
