@@ -26,26 +26,36 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      if (!data || !data.token) {
-        setError('Respuesta inválida del servidor');
+      // 1. Adaptación a la respuesta real del backend (verificamos data.user en lugar de data.token)
+      if (!data || data.error) {
+        setError(data?.error || 'Error de autenticación');
         return;
       }
 
-      document.cookie = `token=${data.token}; path=/; max-age=315360000; SameSite=Strict; Secure`;
-      localStorage.setItem('token', data.token);
-      
-      if (data.user) {
-        document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=315360000; SameSite=Strict; Secure`;
-        localStorage.setItem('user', JSON.stringify(data.user));
+      if (!data.user) {
+        setError('Respuesta inválida del servidor: Faltan datos del usuario');
+        return;
       }
+
+      // 2. Manejo condicional del token (por si en el futuro decides implementar JWT)
+      if (data.token) {
+        document.cookie = `token=${data.token}; path=/; max-age=315360000; SameSite=Strict; Secure`;
+        localStorage.setItem('token', data.token);
+      }
+      
+      // 3. Almacenamiento seguro del usuario
+      document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=315360000; SameSite=Strict; Secure`;
+      localStorage.setItem('user', JSON.stringify(data.user));
 
       setLoginSuccess(true);
       
       setTimeout(() => {
         router.push('/dashboard');
       }, 2000);
-    } catch (err: any) {
-      setError(err.message || 'Error en la autenticación');
+    } catch (err: unknown) {
+      // 4. Manejo estricto de TypeScript para el bloque catch
+      const errorMessage = err instanceof Error ? err.message : 'Error en la conexión con el servidor';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
