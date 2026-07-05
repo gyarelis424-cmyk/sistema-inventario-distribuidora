@@ -1,12 +1,6 @@
-/**
- * Centralized API Client for NestJS Backend
- * ONLY this file should communicate with the backend
- * All frontend calls should use these exported functions
- */
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
   data?: T;
   meta?: {
     total: number;
@@ -17,20 +11,17 @@ interface ApiResponse<T> {
   statusCode?: number;
 }
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(public statusCode: number, message: string) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-/**
- * Generic API call function
- */
-const VALID_METHODS = ['GET', 'POST', 'PUT', 'DELETE'] as const;
+const VALID_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const;
 
-async function apiCall<T>(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+export async function apiCall<T>(
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
   endpoint: string,
   body?: any,
   options: { headers?: Record<string, string> } = {}
@@ -43,9 +34,9 @@ async function apiCall<T>(
   }
 
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -77,10 +68,6 @@ async function apiCall<T>(
   }
 }
 
-// ============================================================================
-// AUTH ENDPOINTS
-// ============================================================================
-
 export async function loginUser(email: string, password: string) {
   const response = await apiCall<{ token: string; user: any }>('POST', '/api/auth/login', {
     email,
@@ -106,18 +93,10 @@ export function logoutUser() {
   localStorage.removeItem('token');
 }
 
-// ============================================================================
-// DASHBOARD ENDPOINTS
-// ============================================================================
-
 export async function getDashboardStats() {
   const response = await apiCall<any>('GET', '/api/dashboard/stats');
   return response.data || response;
 }
-
-// ============================================================================
-// PRODUCTS ENDPOINTS
-// ============================================================================
 
 export async function getProducts(
   page: number = 1,
@@ -175,10 +154,6 @@ export async function deleteProduct(id: string) {
   return response.data || response;
 }
 
-// ============================================================================
-// ENTRIES (INVENTARIO ENTRADA)
-// ============================================================================
-
 export async function getEntries(
   page: number = 1,
   limit: number = 10,
@@ -219,10 +194,6 @@ export async function deleteEntry(id: string) {
   const response = await apiCall<any>('DELETE', `/api/entries/${id}`);
   return response.data || response;
 }
-
-// ============================================================================
-// EXITS (INVENTARIO SALIDA)
-// ============================================================================
 
 export async function getExits(
   page: number = 1,
@@ -265,10 +236,6 @@ export async function deleteExit(id: string) {
   return response.data || response;
 }
 
-// ============================================================================
-// CATEGORIES
-// ============================================================================
-
 export async function getCategories(page: number = 1, limit: number = 10) {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -303,10 +270,6 @@ export async function deleteCategory(id: string) {
   return response.data || response;
 }
 
-// ============================================================================
-// SUPPLIERS
-// ============================================================================
-
 export async function getSuppliers(page: number = 1, limit: number = 10, search: string = '') {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -336,10 +299,6 @@ export async function deleteSupplier(id: string) {
   const response = await apiCall<any>('DELETE', `/api/suppliers/${id}`);
   return response.data || response;
 }
-
-// ============================================================================
-// CLIENTS
-// ============================================================================
 
 export async function getClients(page: number = 1, limit: number = 10, search: string = '') {
   const params = new URLSearchParams({
@@ -371,10 +330,6 @@ export async function deleteClient(id: string) {
   return response.data || response;
 }
 
-// ============================================================================
-// USERS
-// ============================================================================
-
 export async function getUsers(page: number = 1, limit: number = 10) {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -403,10 +358,6 @@ export async function deleteUser(id: string) {
   const response = await apiCall<any>('DELETE', `/api/users/${id}`);
   return response.data || response;
 }
-
-// ============================================================================
-// UNITS
-// ============================================================================
 
 export async function getUnits(page: number = 1, limit: number = 10) {
   const params = new URLSearchParams({
@@ -437,10 +388,6 @@ export async function deleteUnit(id: string) {
   return response.data || response;
 }
 
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
-
 export async function getConfiguration() {
   const response = await apiCall<any>('GET', '/api/configuration');
   return response.data || response;
@@ -451,10 +398,6 @@ export async function updateConfiguration(data: any) {
   return response.data || response;
 }
 
-// ============================================================================
-// AUDIT
-// ============================================================================
-
 export async function getAuditLogs(page: number = 1, limit: number = 10) {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -463,5 +406,3 @@ export async function getAuditLogs(page: number = 1, limit: number = 10) {
   const response = await apiCall<any>('GET', `/api/audit/logs?${params}`);
   return response;
 }
-
-export { ApiError };
