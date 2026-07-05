@@ -27,7 +27,7 @@ export class ConfigurationService {
     return config;
   }
 
-  async updateConfiguration(updates: any) {
+  async updateConfiguration(updates: Partial<Configuration>) {
     let config = await this.configRepository.findOne({ where: {} });
 
     if (!config) {

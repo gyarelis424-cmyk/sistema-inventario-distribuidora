@@ -87,6 +87,10 @@ export class ExitService {
       for (const item of items) {
         const product = await queryRunner.manager.findOne(Product, { where: { id: item.productId } });
 
+        if (!product) {
+          throw new BadRequestException(`Product ${item.productId} not found`);
+        }
+
         const subtotal = parseFloat((item.quantity * item.unitPrice).toFixed(2));
         totalAmount += subtotal;
 
@@ -117,7 +121,7 @@ export class ExitService {
     }
   }
 
-  async update(id: string, updates: any) {
+  async update(id: string, updates: Partial<Exit>) {
     const exit = await this.exitsRepository.findOne({ where: { id } });
     if (!exit) {
       throw new NotFoundException('Exit not found');
