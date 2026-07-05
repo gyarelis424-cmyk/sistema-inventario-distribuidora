@@ -189,7 +189,7 @@ export class ReportsService {
         type: 'SALIDA',
         date: e.exitDate,
         quantity: e.items.reduce((sum, item) => sum + item.quantity, 0),
-        reference: e.referenceNumber,
+        reference: e.documentNumber,
       })),
     };
   }

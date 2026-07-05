@@ -27,7 +27,7 @@ class ApiError extends Error {
 /**
  * Generic API call function
  */
-async function apiCall<T>(
+export async function apiCall<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   endpoint: string,
   body?: any,

@@ -103,6 +103,10 @@ export class ExitService {
       for (const item of items) {
         const product = await queryRunner.manager.findOne(Product, { where: { id: item.productId } });
 
+        if (!product) {
+          throw new BadRequestException(`Producto ${item.productId} no encontrado`);
+        }
+
         const subtotal = parseFloat((item.quantity * item.unitPrice).toFixed(2));
         totalAmount += subtotal;
 
