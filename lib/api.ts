@@ -27,12 +27,21 @@ class ApiError extends Error {
 /**
  * Generic API call function
  */
+const VALID_METHODS = ['GET', 'POST', 'PUT', 'DELETE'] as const;
+
 async function apiCall<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   endpoint: string,
   body?: any,
   options: { headers?: Record<string, string> } = {}
 ): Promise<ApiResponse<T>> {
+  if (!VALID_METHODS.includes(method)) {
+    throw new ApiError(500, `apiCall: método HTTP inválido "${String(method)}". Verifica el orden de los argumentos: apiCall(method, endpoint, body).`);
+  }
+  if (typeof endpoint !== 'string') {
+    throw new ApiError(500, `apiCall: endpoint debe ser un string, recibido ${typeof endpoint}. Verifica el orden de los argumentos: apiCall(method, endpoint, body).`);
+  }
+
   const url = `${API_BASE_URL}${endpoint}`;
   
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -456,4 +465,3 @@ export async function getAuditLogs(page: number = 1, limit: number = 10) {
 }
 
 export { ApiError };
-export { apiCall };

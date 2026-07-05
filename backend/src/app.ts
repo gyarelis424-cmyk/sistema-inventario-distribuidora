@@ -5,11 +5,15 @@ import { AppModule } from './app.module';
 export async function initializeApp() {
   const app = await NestFactory.create(AppModule);
 
-  const corsOrigin = process.env.CORS_ORIGIN || '*';
-  console.log(`[CORS] Configured origin: ${corsOrigin}`);
+  const rawCorsOrigin = process.env.CORS_ORIGIN;
+  if (!rawCorsOrigin) {
+    throw new Error('CORS_ORIGIN no está configurado. Debe apuntar al dominio exacto del frontend en Render.');
+  }
+  const allowedOrigins = rawCorsOrigin.split(',').map(origin => origin.trim());
+  console.log(`[CORS] Orígenes permitidos: ${allowedOrigins.join(', ')}`);
 
   app.enableCors({
-    origin: corsOrigin,
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

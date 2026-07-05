@@ -44,8 +44,6 @@ import { AuditController } from './controllers/audit.controller';
 
 dotenv.config();
 
-const isProduction = process.env.NODE_ENV === 'production';
-
 @Module({
   imports: [
     TypeOrmModule.forRoot(
@@ -53,47 +51,35 @@ const isProduction = process.env.NODE_ENV === 'production';
         ? {
             type: 'postgres' as const,
             url: process.env.DATABASE_URL,
-            entities: [
-              User, Category, Unit, Product, Supplier, Client, 
-              Entry, EntryItem, Exit, ExitItem, Audit, Configuration
-            ],
-            synchronize: !isProduction,
-            logging: !isProduction,
+            entities: [User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration],
+            synchronize: process.env.NODE_ENV !== 'production',
+            logging: false,
             ssl: { rejectUnauthorized: false },
           }
         : {
             type: 'postgres' as const,
             host: process.env.DB_HOST || '127.0.0.1',
-            port: parseInt(process.env.DB_PORT || '5432', 10),
+            port: parseInt(process.env.DB_PORT || '5432'),
             username: process.env.DB_USERNAME || 'postgres',
             password: process.env.DB_PASSWORD || 'postgres',
             database: process.env.DB_NAME || 'distribuidora',
-            entities: [
-              User, Category, Unit, Product, Supplier, Client, 
-              Entry, EntryItem, Exit, ExitItem, Audit, Configuration
-            ],
-            synchronize: !isProduction,
-            logging: !isProduction,
+            entities: [User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration],
+            synchronize: process.env.NODE_ENV !== 'production',
+            logging: false,
           }
     ),
-    TypeOrmModule.forFeature([
-      User, Category, Unit, Product, Supplier, Client, 
-      Entry, EntryItem, Exit, ExitItem, Audit, Configuration
-    ]),
+    TypeOrmModule.forFeature([User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your_super_secret_key_change_in_production_12345',
-      signOptions: { expiresIn: '999999d' },
+      secret: (() => {
+        if (!process.env.JWT_SECRET) {
+          throw new Error('JWT_SECRET no está configurado. Debe definirse en las variables de entorno del backend en Render.');
+        }
+        return process.env.JWT_SECRET;
+      })(),
+      signOptions: { expiresIn: '7d' },
     }),
   ],
-  providers: [
-    AuthService, UserService, ProductService, CategoryService, 
-    UnitService, SupplierService, ClientService, EntryService, 
-    ExitService, ConfigurationService, DashboardService, AuditService
-  ],
-  controllers: [
-    AuthController, UserController, ProductController, CategoryController, 
-    UnitController, SupplierController, ClientController, EntryController, 
-    ExitController, ConfigurationController, DashboardController, AuditController
-  ],
+  providers: [AuthService, UserService, ProductService, CategoryService, UnitService, SupplierService, ClientService, EntryService, ExitService, ConfigurationService, DashboardService, AuditService],
+  controllers: [AuthController, UserController, ProductController, CategoryController, UnitController, SupplierController, ClientController, EntryController, ExitController, ConfigurationController, DashboardController, AuditController],
 })
 export class AppModule {}
