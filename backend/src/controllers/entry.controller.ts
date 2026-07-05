@@ -5,19 +5,17 @@ import { EntryService } from '../services/entry.service';
 export class EntryController {
   constructor(private entryService: EntryService) {}
 
-  @Get('stats/monthly')
-  async getMonthlyEntries() {
-    return await this.entryService.getMonthlyEntries();
-  }
-
-  @Get('stats/total-monthly')
-  async getTotalMonthlyEntries() {
-    return await this.entryService.getTotalMonthlyEntries();
-  }
-
   @Get()
   async findAll(@Query('page') page = 1, @Query('limit') limit = 10, @Query('search') search = '', @Query('supplierId') supplierId = '') {
-    return this.entryService.findAll(page, limit, search, supplierId);
+    const result = await this.entryService.findAll(page, limit, search, supplierId);
+    return {
+      data: result.data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: Math.ceil(result.total / result.limit),
+      },
+    };
   }
 
   @Get(':id')

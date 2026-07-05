@@ -12,7 +12,15 @@ export class ClientController {
 
   @Get()
   async findAll(@Query('page') page = 1, @Query('limit') limit = 10, @Query('search') search = '') {
-    return this.clientService.findAll(page, limit, search);
+    const result = await this.clientService.findAll(page, limit, search);
+    return {
+      data: result.data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: Math.ceil(result.total / result.limit),
+      },
+    };
   }
 
   @Get(':id')

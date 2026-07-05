@@ -5,24 +5,30 @@ import { ProductService } from '../services/product.service';
 export class ProductController {
   constructor(private productService: ProductService) {}
 
-  @Get('stats/total')
-  async getTotalProducts() {
-    return { total: await this.productService.getTotalProducts() };
-  }
-
-  @Get('stats/stock')
-  async getTotalStock() {
-    return { total: await this.productService.getTotalStock() };
-  }
-
-  @Get('stats/by-category')
-  async getStockByCategory() {
-    return await this.productService.getStockByCategory();
-  }
-
   @Get()
   async findAll(@Query('page') page = 1, @Query('limit') limit = 10, @Query('search') search = '', @Query('categoryId') categoryId = '', @Query('status') status = '') {
-    return this.productService.findAll(page, limit, search, categoryId, status);
+    const result = await this.productService.findAll(page, limit, search, categoryId, status);
+    return {
+      data: result.data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: Math.ceil(result.total / result.limit),
+      },
+    };
+  }
+
+  @Get('category/:categoryId')
+  async findByCategory(@Param('categoryId') categoryId: string, @Query('page') page = 1, @Query('limit') limit = 10) {
+    const result = await this.productService.findAll(page, limit, '', categoryId, '');
+    return {
+      data: result.data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: Math.ceil(result.total / result.limit),
+      },
+    };
   }
 
   @Get(':id')

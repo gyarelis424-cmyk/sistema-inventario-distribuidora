@@ -65,6 +65,10 @@ export class AuthService {
     return this.jwtService.sign(payload);
   }
 
+  async decodeToken(token: string) {
+    return this.jwtService.decode(token);
+  }
+
   private sanitizeUser(user: User) {
     const { passwordHash, ...result } = user;
     return result;

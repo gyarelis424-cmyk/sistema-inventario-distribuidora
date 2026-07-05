@@ -5,19 +5,17 @@ import { ExitService } from '../services/exit.service';
 export class ExitController {
   constructor(private exitService: ExitService) {}
 
-  @Get('stats/monthly')
-  async getMonthlyExits() {
-    return await this.exitService.getMonthlyExits();
-  }
-
-  @Get('stats/total-monthly')
-  async getTotalMonthlySales() {
-    return await this.exitService.getTotalMonthlySales();
-  }
-
   @Get()
   async findAll(@Query('page') page = 1, @Query('limit') limit = 10, @Query('search') search = '', @Query('clientId') clientId = '') {
-    return this.exitService.findAll(page, limit, search, clientId);
+    const result = await this.exitService.findAll(page, limit, search, clientId);
+    return {
+      data: result.data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: Math.ceil(result.total / result.limit),
+      },
+    };
   }
 
   @Get(':id')

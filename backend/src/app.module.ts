@@ -26,6 +26,8 @@ import { ClientService } from './services/client.service';
 import { EntryService } from './services/entry.service';
 import { ExitService } from './services/exit.service';
 import { ConfigurationService } from './services/configuration.service';
+import { DashboardService } from './services/dashboard.service';
+import { AuditService } from './services/audit.service';
 
 import { AuthController } from './controllers/auth.controller';
 import { UserController } from './controllers/user.controller';
@@ -37,6 +39,8 @@ import { ClientController } from './controllers/client.controller';
 import { EntryController } from './controllers/entry.controller';
 import { ExitController } from './controllers/exit.controller';
 import { ConfigurationController } from './controllers/configuration.controller';
+import { DashboardController } from './controllers/dashboard.controller';
+import { AuditController } from './controllers/audit.controller';
 
 dotenv.config();
 
@@ -44,24 +48,52 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: process.env.DATABASE_URL,
-      entities: [User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration],
-      
-      synchronize: !isProduction,
-      logging: !isProduction,
-      
-      ssl: { rejectUnauthorized: false }, 
-    }),
-    TypeOrmModule.forFeature([User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration]),
+    TypeOrmModule.forRoot(
+      process.env.DATABASE_URL
+        ? {
+            type: 'postgres' as const,
+            url: process.env.DATABASE_URL,
+            entities: [
+              User, Category, Unit, Product, Supplier, Client, 
+              Entry, EntryItem, Exit, ExitItem, Audit, Configuration
+            ],
+            synchronize: !isProduction,
+            logging: !isProduction,
+            ssl: { rejectUnauthorized: false },
+          }
+        : {
+            type: 'postgres' as const,
+            host: process.env.DB_HOST || '127.0.0.1',
+            port: parseInt(process.env.DB_PORT || '5432', 10),
+            username: process.env.DB_USERNAME || 'postgres',
+            password: process.env.DB_PASSWORD || 'postgres',
+            database: process.env.DB_NAME || 'distribuidora',
+            entities: [
+              User, Category, Unit, Product, Supplier, Client, 
+              Entry, EntryItem, Exit, ExitItem, Audit, Configuration
+            ],
+            synchronize: !isProduction,
+            logging: !isProduction,
+          }
+    ),
+    TypeOrmModule.forFeature([
+      User, Category, Unit, Product, Supplier, Client, 
+      Entry, EntryItem, Exit, ExitItem, Audit, Configuration
+    ]),
     JwtModule.register({
-     
-      secret: process.env.JWT_SECRET,
+      secret: process.env.JWT_SECRET || 'your_super_secret_key_change_in_production_12345',
       signOptions: { expiresIn: '999999d' },
     }),
   ],
-  providers: [AuthService, UserService, ProductService, CategoryService, UnitService, SupplierService, ClientService, EntryService, ExitService, ConfigurationService],
-  controllers: [AuthController, UserController, ProductController, CategoryController, UnitController, SupplierController, ClientController, EntryController, ExitController, ConfigurationController],
+  providers: [
+    AuthService, UserService, ProductService, CategoryService, 
+    UnitService, SupplierService, ClientService, EntryService, 
+    ExitService, ConfigurationService, DashboardService, AuditService
+  ],
+  controllers: [
+    AuthController, UserController, ProductController, CategoryController, 
+    UnitController, SupplierController, ClientController, EntryController, 
+    ExitController, ConfigurationController, DashboardController, AuditController
+  ],
 })
 export class AppModule {}

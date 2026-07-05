@@ -7,7 +7,15 @@ export class UserController {
 
   @Get()
   async findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
-    return this.userService.findAll(page, limit);
+    const result = await this.userService.findAll(page, limit);
+    return {
+      data: result.data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: Math.ceil(result.total / result.limit),
+      },
+    };
   }
 
   @Get(':id')

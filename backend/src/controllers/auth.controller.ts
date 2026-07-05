@@ -5,13 +5,13 @@ import { AuthService } from '../services/auth.service';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('register')
-  async register(@Body() body: { email: string; names: string; phone: string; password: string }) {
-    return this.authService.register(body.email, body.names, body.phone, body.password);
-  }
-
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
     return this.authService.login(body.email, body.password);
+  }
+
+  @Post('refresh')
+  async refresh(@Body() body: { token: string }) {
+    return this.authService.validateUser((await this.authService.decodeToken(body.token)).sub);
   }
 }
