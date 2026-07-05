@@ -1,177 +1,458 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+/**
+ * Centralized API Client for NestJS Backend
+ * ONLY this file should communicate with the backend
+ * All frontend calls should use these exported functions
+ */
 
-function getTokenFromCookie(): string | null {
-  if (typeof document === 'undefined') return null;
-  const nameEQ = 'token=';
-  const cookies = document.cookie.split(';');
-  for (let cookie of cookies) {
-    cookie = cookie.trim();
-    if (cookie.startsWith(nameEQ)) {
-      return decodeURIComponent(cookie.substring(nameEQ.length));
-    }
-  }
-  return null;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+interface ApiResponse<T> {
+  data?: T;
+  meta?: {
+    total: number;
+    page: number;
+    lastPage: number;
+  };
+  message?: string;
+  statusCode?: number;
 }
 
-export async function apiCall(endpoint: string, options: RequestInit = {}) {
-  const token = getTokenFromCookie();
+class ApiError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
 
+/**
+ * Generic API call function
+ */
+async function apiCall<T>(
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  endpoint: string,
+  body?: any,
+  options: { headers?: Record<string, string> } = {}
+): Promise<ApiResponse<T>> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
+    ...options.headers,
   };
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
-  if (!response.ok) {
-    if (response.status === 401) {
-      if (typeof document !== 'undefined') {
-        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      }
-      throw new Error('Unauthorized');
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new ApiError(response.status, data.message || `Error ${response.status}`);
     }
-    try {
-      const error = await response.json();
-      throw new Error(error.message || 'API Error');
-    } catch {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
     }
+    throw new ApiError(500, error instanceof Error ? error.message : 'Unknown error');
   }
-
-  const contentType = response.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
-    throw new Error('Invalid response format');
-  }
-
-  return response.json();
 }
 
-export async function getProducts(page = 1, limit = 10, search = '', categoryId = '') {
-  return apiCall(`/api/products?page=${page}&limit=${limit}&search=${search}&categoryId=${categoryId}`);
+// ============================================================================
+// AUTH ENDPOINTS
+// ============================================================================
+
+export async function loginUser(email: string, password: string) {
+  const response = await apiCall<{ token: string; user: any }>('POST', '/api/auth/login', {
+    email,
+    password,
+  });
+  if (response.data?.token) {
+    localStorage.setItem('token', response.data.token);
+  }
+  return response.data;
+}
+
+export async function refreshToken(token: string) {
+  const response = await apiCall<{ token: string; user: any }>('POST', '/api/auth/refresh', {
+    token,
+  });
+  if (response.data?.token) {
+    localStorage.setItem('token', response.data.token);
+  }
+  return response.data;
+}
+
+export function logoutUser() {
+  localStorage.removeItem('token');
+}
+
+// ============================================================================
+// DASHBOARD ENDPOINTS
+// ============================================================================
+
+export async function getDashboardStats() {
+  const response = await apiCall<any>('GET', '/api/dashboard/stats');
+  return response.data || response;
+}
+
+// ============================================================================
+// PRODUCTS ENDPOINTS
+// ============================================================================
+
+export async function getProducts(
+  page: number = 1,
+  limit: number = 10,
+  search: string = '',
+  categoryId: string = '',
+  status: string = ''
+) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    search,
+    categoryId,
+    status,
+  });
+  const response = await apiCall<any>('GET', `/api/products?${params}`);
+  return response;
 }
 
 export async function getProductById(id: string) {
-  return apiCall(`/api/products/${id}`);
+  const response = await apiCall<any>('GET', `/api/products/${id}`);
+  return response.data || response;
 }
 
-export async function createProduct(data: any) {
-  return apiCall('/api/products', { method: 'POST', body: JSON.stringify(data) });
+export async function getProductsByCategory(categoryId: string, page: number = 1, limit: number = 10) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  const response = await apiCall<any>('GET', `/api/products/category/${categoryId}?${params}`);
+  return response;
+}
+
+export async function createProduct(data: {
+  code: string;
+  name: string;
+  price: number;
+  categoryId: string;
+  unitId: string;
+  minimumStock: number;
+  description?: string;
+  imageUrl?: string;
+}) {
+  const response = await apiCall<any>('POST', '/api/products', data);
+  return response.data || response;
 }
 
 export async function updateProduct(id: string, data: any) {
-  return apiCall(`/api/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  const response = await apiCall<any>('PUT', `/api/products/${id}`, data);
+  return response.data || response;
 }
 
 export async function deleteProduct(id: string) {
-  return apiCall(`/api/products/${id}`, { method: 'DELETE' });
+  const response = await apiCall<any>('DELETE', `/api/products/${id}`);
+  return response.data || response;
 }
 
-export async function getCategories() {
-  return apiCall('/api/categories/active');
-}
+// ============================================================================
+// ENTRIES (INVENTARIO ENTRADA)
+// ============================================================================
 
-export async function getUnits() {
-  return apiCall('/api/units/active');
-}
-
-export async function getSuppliers(search = '') {
-  return apiCall(`/api/suppliers/active?search=${search}`);
-}
-
-export async function getClients(search = '') {
-  return apiCall(`/api/clients/active?search=${search}`);
-}
-
-export async function getEntries(page = 1, limit = 10, search = '', supplierId = '') {
-  return apiCall(`/api/entries?page=${page}&limit=${limit}&search=${search}&supplierId=${supplierId}`);
+export async function getEntries(
+  page: number = 1,
+  limit: number = 10,
+  search: string = '',
+  supplierId: string = ''
+) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    search,
+    supplierId,
+  });
+  const response = await apiCall<any>('GET', `/api/entries?${params}`);
+  return response;
 }
 
 export async function getEntryById(id: string) {
-  return apiCall(`/api/entries/${id}`);
+  const response = await apiCall<any>('GET', `/api/entries/${id}`);
+  return response.data || response;
 }
 
-export async function createEntry(data: any) {
-  return apiCall('/api/entries', { method: 'POST', body: JSON.stringify(data) });
+export async function createEntry(data: {
+  supplierId: string;
+  documentNumber: string;
+  entryDate: string;
+  items: Array<{ productId: string; quantity: number; unitPrice: number }>;
+}) {
+  const response = await apiCall<any>('POST', '/api/entries', data);
+  return response.data || response;
+}
+
+export async function updateEntry(id: string, data: any) {
+  const response = await apiCall<any>('PUT', `/api/entries/${id}`, data);
+  return response.data || response;
 }
 
 export async function deleteEntry(id: string) {
-  return apiCall(`/api/entries/${id}`, { method: 'DELETE' });
+  const response = await apiCall<any>('DELETE', `/api/entries/${id}`);
+  return response.data || response;
 }
 
-export async function getExits(page = 1, limit = 10, search = '', clientId = '') {
-  return apiCall(`/api/exits?page=${page}&limit=${limit}&search=${search}&clientId=${clientId}`);
+// ============================================================================
+// EXITS (INVENTARIO SALIDA)
+// ============================================================================
+
+export async function getExits(
+  page: number = 1,
+  limit: number = 10,
+  search: string = '',
+  clientId: string = ''
+) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    search,
+    clientId,
+  });
+  const response = await apiCall<any>('GET', `/api/exits?${params}`);
+  return response;
 }
 
 export async function getExitById(id: string) {
-  return apiCall(`/api/exits/${id}`);
+  const response = await apiCall<any>('GET', `/api/exits/${id}`);
+  return response.data || response;
 }
 
-export async function createExit(data: any) {
-  return apiCall('/api/exits', { method: 'POST', body: JSON.stringify(data) });
+export async function createExit(data: {
+  clientId: string;
+  documentNumber: string;
+  exitDate: string;
+  items: Array<{ productId: string; quantity: number; unitPrice: number }>;
+}) {
+  const response = await apiCall<any>('POST', '/api/exits', data);
+  return response.data || response;
+}
+
+export async function updateExit(id: string, data: any) {
+  const response = await apiCall<any>('PUT', `/api/exits/${id}`, data);
+  return response.data || response;
 }
 
 export async function deleteExit(id: string) {
-  return apiCall(`/api/exits/${id}`, { method: 'DELETE' });
+  const response = await apiCall<any>('DELETE', `/api/exits/${id}`);
+  return response.data || response;
 }
 
-export async function getDashboardStats() {
-  try {
-    const results = await Promise.allSettled([
-      apiCall('/api/products/stats/total'),
-      apiCall('/api/products/stats/stock'),
-      apiCall('/api/products/stats/by-category'),
-      apiCall('/api/entries/stats/total-monthly'),
-      apiCall('/api/exits/stats/total-monthly'),
-      apiCall('/api/entries/stats/monthly'),
-      apiCall('/api/exits/stats/monthly'),
-    ]);
+// ============================================================================
+// CATEGORIES
+// ============================================================================
 
-    return results.map((result, index) => {
-      if (result.status === 'fulfilled') {
-        return result.value;
-      } else {
-        console.warn(`Dashboard stat ${index} failed:`, result.reason);
-        return { error: true, message: 'Failed to load stat' };
-      }
-    });
-  } catch (error) {
-    console.error('Dashboard stats error:', error);
-    throw error;
-  }
+export async function getCategories(page: number = 1, limit: number = 10) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  const response = await apiCall<any>('GET', `/api/categories?${params}`);
+  return response;
 }
 
-export async function getUsers(page = 1, limit = 10) {
-  return apiCall(`/api/users?page=${page}&limit=${limit}`);
+export async function getActiveCategories() {
+  const response = await apiCall<any>('GET', '/api/categories/active');
+  return Array.isArray(response) ? response : response.data || response;
+}
+
+export async function getCategoryById(id: string) {
+  const response = await apiCall<any>('GET', `/api/categories/${id}`);
+  return response.data || response;
+}
+
+export async function createCategory(name: string, description?: string) {
+  const response = await apiCall<any>('POST', '/api/categories', { name, description });
+  return response.data || response;
+}
+
+export async function updateCategory(id: string, name: string, description?: string) {
+  const response = await apiCall<any>('PUT', `/api/categories/${id}`, { name, description });
+  return response.data || response;
+}
+
+export async function deleteCategory(id: string) {
+  const response = await apiCall<any>('DELETE', `/api/categories/${id}`);
+  return response.data || response;
+}
+
+// ============================================================================
+// SUPPLIERS
+// ============================================================================
+
+export async function getSuppliers(page: number = 1, limit: number = 10, search: string = '') {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    search,
+  });
+  const response = await apiCall<any>('GET', `/api/suppliers?${params}`);
+  return response;
+}
+
+export async function getActiveSuppliers() {
+  const response = await apiCall<any>('GET', '/api/suppliers/active');
+  return Array.isArray(response) ? response : response.data || response;
+}
+
+export async function createSupplier(name: string, email: string, phone: string) {
+  const response = await apiCall<any>('POST', '/api/suppliers', { name, email, phone });
+  return response.data || response;
+}
+
+export async function updateSupplier(id: string, name: string, email: string, phone: string) {
+  const response = await apiCall<any>('PUT', `/api/suppliers/${id}`, { name, email, phone });
+  return response.data || response;
+}
+
+export async function deleteSupplier(id: string) {
+  const response = await apiCall<any>('DELETE', `/api/suppliers/${id}`);
+  return response.data || response;
+}
+
+// ============================================================================
+// CLIENTS
+// ============================================================================
+
+export async function getClients(page: number = 1, limit: number = 10, search: string = '') {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    search,
+  });
+  const response = await apiCall<any>('GET', `/api/clients?${params}`);
+  return response;
+}
+
+export async function getActiveClients() {
+  const response = await apiCall<any>('GET', '/api/clients/active');
+  return Array.isArray(response) ? response : response.data || response;
+}
+
+export async function createClient(name: string, email: string, phone: string) {
+  const response = await apiCall<any>('POST', '/api/clients', { name, email, phone });
+  return response.data || response;
+}
+
+export async function updateClient(id: string, name: string, email: string, phone: string) {
+  const response = await apiCall<any>('PUT', `/api/clients/${id}`, { name, email, phone });
+  return response.data || response;
+}
+
+export async function deleteClient(id: string) {
+  const response = await apiCall<any>('DELETE', `/api/clients/${id}`);
+  return response.data || response;
+}
+
+// ============================================================================
+// USERS
+// ============================================================================
+
+export async function getUsers(page: number = 1, limit: number = 10) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  const response = await apiCall<any>('GET', `/api/users?${params}`);
+  return response;
 }
 
 export async function getUserById(id: string) {
-  return apiCall(`/api/users/${id}`);
+  const response = await apiCall<any>('GET', `/api/users/${id}`);
+  return response.data || response;
 }
 
-export async function createUser(data: any) {
-  return apiCall('/api/users', { method: 'POST', body: JSON.stringify(data) });
+export async function createUser(email: string, names: string, phone: string) {
+  const response = await apiCall<any>('POST', '/api/users', { email, names, phone });
+  return response.data || response;
 }
 
-export async function updateUser(id: string, data: any) {
-  return apiCall(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export async function updateUser(id: string, names: string, phone: string) {
+  const response = await apiCall<any>('PUT', `/api/users/${id}`, { names, phone });
+  return response.data || response;
 }
 
 export async function deleteUser(id: string) {
-  return apiCall(`/api/users/${id}`, { method: 'DELETE' });
+  const response = await apiCall<any>('DELETE', `/api/users/${id}`);
+  return response.data || response;
 }
 
+// ============================================================================
+// UNITS
+// ============================================================================
+
+export async function getUnits(page: number = 1, limit: number = 10) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  const response = await apiCall<any>('GET', `/api/units?${params}`);
+  return response;
+}
+
+export async function getActiveUnits() {
+  const response = await apiCall<any>('GET', '/api/units/active');
+  return Array.isArray(response) ? response : response.data || response;
+}
+
+export async function createUnit(name: string, abbreviation: string) {
+  const response = await apiCall<any>('POST', '/api/units', { name, abbreviation });
+  return response.data || response;
+}
+
+export async function updateUnit(id: string, name: string, abbreviation: string) {
+  const response = await apiCall<any>('PUT', `/api/units/${id}`, { name, abbreviation });
+  return response.data || response;
+}
+
+export async function deleteUnit(id: string) {
+  const response = await apiCall<any>('DELETE', `/api/units/${id}`);
+  return response.data || response;
+}
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
 export async function getConfiguration() {
-  return apiCall('/api/configuration');
+  const response = await apiCall<any>('GET', '/api/configuration');
+  return response.data || response;
 }
 
 export async function updateConfiguration(data: any) {
-  return apiCall('/api/configuration', { method: 'PUT', body: JSON.stringify(data) });
+  const response = await apiCall<any>('PUT', '/api/configuration', data);
+  return response.data || response;
 }
+
+// ============================================================================
+// AUDIT
+// ============================================================================
+
+export async function getAuditLogs(page: number = 1, limit: number = 10) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  const response = await apiCall<any>('GET', `/api/audit/logs?${params}`);
+  return response;
+}
+
+export { ApiError };

@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import MainLayout from '@/components/main-layout';
-import { apiCall } from '@/lib/api';
+import { getDashboardStats } from '@/lib/api';
 import { Package, Boxes, TrendingUp, TrendingDown } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { showToast } from '@/components/ui/toast';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
@@ -16,51 +18,40 @@ export default function DashboardPage() {
 
   const loadStats = async () => {
     try {
-      const [totalProducts, totalStock, stockByCategory, monthlyEntries, monthlySales, entries, exits] = await Promise.all([
-        apiCall('/api/products/stats/total'),
-        apiCall('/api/products/stats/stock'),
-        apiCall('/api/products/stats/by-category'),
-        apiCall('/api/entries/stats/total-monthly'),
-        apiCall('/api/exits/stats/total-monthly'),
-        apiCall('/api/entries/stats/monthly'),
-        apiCall('/api/exits/stats/monthly'),
-      ]);
-
-      const chartData = formatChartData(entries, exits);
+      setLoading(true);
+      const data = await getDashboardStats();
+      
+      const chartData = formatChartData(data);
 
       setStats({
-        totalProducts: totalProducts.total,
-        totalStock: totalStock.total,
-        monthlyEntries: monthlyEntries.count,
-        monthlySales: monthlySales.count,
-        stockByCategory: stockByCategory || [],
+        totalProducts: data.totalProducts || 0,
+        totalStock: data.totalStock || 0,
+        monthlyEntries: data.monthlyEntries || 0,
+        monthlySales: data.monthlySales || 0,
+        stockByCategory: data.stockByCategory || [],
         chartData: chartData,
       });
-    } catch (error) {
-      console.error('Error loading stats:', error);
+    } catch (error: any) {
+      console.error('[v0] Error loading dashboard stats:', error);
+      showToast('Error al cargar estadísticas', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatChartData = (entries: any[], exits: any[]) => {
+  const formatChartData = (data: any) => {
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
     return months.map((month, idx) => ({
       month,
-      Entradas: entries[idx]?.count || 0,
-      Salidas: exits[idx]?.count || 0,
+      Entradas: data.monthlyEntries || 0,
+      Salidas: data.monthlySales || 0,
     }));
   };
 
   if (loading) {
     return (
       <MainLayout>
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Cargando datos...</p>
-          </div>
-        </div>
+        <LoadingSpinner fullPage />
       </MainLayout>
     );
   }
