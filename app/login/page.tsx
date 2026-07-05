@@ -7,7 +7,7 @@ import { apiCall } from '@/lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@distribuidora.com');
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
