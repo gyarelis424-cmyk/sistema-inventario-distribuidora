@@ -8,6 +8,10 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const token = request.cookies.get('token')?.value;
 
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   if (publicRoutes.includes(pathname)) {
     if (token) {
       return NextResponse.redirect(new URL('/dashboard', request.url));

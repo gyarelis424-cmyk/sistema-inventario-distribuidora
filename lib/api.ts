@@ -38,8 +38,17 @@ export async function apiCall(endpoint: string, options: RequestInit = {}) {
       }
       throw new Error('Unauthorized');
     }
-    const error = await response.json();
-    throw new Error(error.message || 'API Error');
+    try {
+      const error = await response.json();
+      throw new Error(error.message || 'API Error');
+    } catch {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+  }
+
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    throw new Error('Invalid response format');
   }
 
   return response.json();

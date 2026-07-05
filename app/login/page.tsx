@@ -26,10 +26,19 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
+      if (!data || !data.token) {
+        setError('Respuesta inválida del servidor');
+        return;
+      }
+
       document.cookie = `token=${data.token}; path=/; max-age=315360000; SameSite=Strict; Secure`;
-      document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=315360000; SameSite=Strict; Secure`;
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      if (data.user) {
+        document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=315360000; SameSite=Strict; Secure`;
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
       setLoginSuccess(true);
       
       setTimeout(() => {
