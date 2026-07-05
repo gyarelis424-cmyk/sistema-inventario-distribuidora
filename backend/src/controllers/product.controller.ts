@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ProductService } from '../services/product.service';
 
-@Controller('api/products')
+@Controller('products')
 export class ProductController {
   constructor(private productService: ProductService) {}
 

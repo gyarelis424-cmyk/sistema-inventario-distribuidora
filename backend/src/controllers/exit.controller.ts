@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ExitService } from '../services/exit.service';
 
-@Controller('api/exits')
+@Controller('exits')
 export class ExitController {
   constructor(private exitService: ExitService) {}
 

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { UnitService } from '../services/unit.service';
 
-@Controller('api/units')
+@Controller('units')
 export class UnitController {
   constructor(private unitService: UnitService) {}
 

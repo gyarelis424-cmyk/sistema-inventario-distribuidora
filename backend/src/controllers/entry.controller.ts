@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { EntryService } from '../services/entry.service';
 
-@Controller('api/entries')
+@Controller('entries')
 export class EntryController {
   constructor(private entryService: EntryService) {}
 
