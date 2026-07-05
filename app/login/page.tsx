@@ -25,7 +25,7 @@ export default function LoginPage() {
         { email, password }
       );
 
-      const data = response.data;
+      const data = (response as any).data || response;
 
       if (!data || !data.token) {
         setError('Respuesta inválida del servidor');
