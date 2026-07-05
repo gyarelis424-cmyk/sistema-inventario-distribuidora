@@ -4,237 +4,303 @@ Sistema web completo para la gestión de inventario, con módulos para productos
 
 ## Características Principales
 
-✅ **Autenticación & Autorización**: Sistema JWT sin expiración, roles de usuario (Administrador, Vendedor, Almacenista)
+✅ **Autenticación & Autorización**: Sistema JWT seguro con control de acceso basado en roles (Administrador, Vendedor y Almacenista).
 
-✅ **Gestión de Productos**: CRUD completo, categorías, unidades de medida, stock en tiempo real
+✅ **Gestión de Productos**: CRUD completo, categorías, unidades de medida y control de stock en tiempo real.
 
-✅ **Módulo de Entradas**: Registro de compras a proveedores con actualización automática de stock
+✅ **Módulo de Entradas**: Registro de compras a proveedores con actualización automática de inventario.
 
-✅ **Módulo de Salidas**: Registro de ventas a clientes con validación de disponibilidad
+✅ **Módulo de Salidas**: Registro de ventas a clientes con validación automática de disponibilidad.
 
-✅ **Dashboard en Tiempo Real**: KPIs dinámicos, gráficos de movimientos, stock por categoría
+✅ **Dashboard en Tiempo Real**: KPIs dinámicos, métricas operativas y visualización de movimientos de inventario.
 
-✅ **Configuración Flexible**: Gestión de usuarios, categorías, proveedores, clientes, unidades
+✅ **Configuración Flexible**: Gestión de usuarios, categorías, proveedores, clientes y unidades de medida.
 
-✅ **Reportes Avanzados**: Stock actual, movimientos, Kardex, productos por categoría
+✅ **Reportes Avanzados**: Reportes de stock, movimientos, Kardex y análisis por categorías.
 
-✅ **Auditoría**: Registro detallado de todas las acciones del sistema
+✅ **Auditoría**: Registro detallado de acciones realizadas dentro del sistema.
 
-✅ **Base de Datos PostgreSQL**: Relaciones complejas, constraints, sincronización automática
+✅ **Base de Datos MySQL**: Estructura relacional optimizada, integridad referencial y alto rendimiento para entornos empresariales.
 
-## Stack Tecnológico
+## Tecnologías Utilizadas
 
 ### Backend
-- **NestJS**: Framework Node.js robusto
-- **TypeORM**: ORM con soporte para PostgreSQL
-- **Passport + JWT**: Autenticación segura
-- **bcryptjs**: Encriptación de contraseñas
-- **PostgreSQL**: Base de datos relacional
+
+* **Node.js**
+* **NestJS**
+* **TypeORM**
+* **JWT (JSON Web Token)**
+* **Passport**
+* **bcryptjs**
+* **MySQL**
+* **Class Validator**
+* **REST API**
 
 ### Frontend
-- **Next.js 16**: React SSR/SSG
-- **Tailwind CSS v4**: Estilos utility-first
-- **Recharts**: Gráficos dinámicos
-- **Lucide Icons**: Iconografía moderna
-- **SWR/Fetch**: Gestión de estado HTTP
+
+* **Next.js**
+* **React**
+* **Tailwind CSS**
+* **Recharts**
+* **Lucide Icons**
+* **Fetch API**
+
+### Herramientas de Desarrollo
+
+* **Git** (Control de versiones)
+* **GitHub** (Gestión de repositorio)
+* **Postman** (Pruebas y documentación de APIs)
+* **Render** (Despliegue en la nube)
 
 ## Instalación Local
 
 ### Requisitos Previos
-- Node.js 18+
-- PostgreSQL 12+
-- pnpm (recomendado) o npm
+
+* Node.js 18 o superior
+* MySQL 8 o superior
+* pnpm o npm
+* Git
 
 ### Pasos de Instalación
 
-1. **Clonar repositorio**
+1. **Clonar el repositorio**
+
 ```bash
 git clone <repository-url>
 cd distribuidora
 ```
 
 2. **Instalar dependencias**
+
 ```bash
 pnpm install
 ```
 
-3. **Configurar base de datos**
+3. **Configurar variables de entorno**
+
 ```bash
-cp .env.example .env.local
-# Editar .env.local con credenciales de PostgreSQL
+cp .env.example .env
 ```
 
-4. **Iniciar servidor de desarrollo**
+4. **Configurar conexión MySQL**
+
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=tu_password
+DB_NAME=distribuidora
+JWT_SECRET=tu_clave_secreta
+```
+
+5. **Iniciar el proyecto**
+
 ```bash
 pnpm dev
 ```
 
-El frontend estará disponible en `http://localhost:3000`
-El backend estará disponible en `http://localhost:3001`
+Frontend:
+
+```text
+http://localhost:3000
+```
+
+Backend:
+
+```text
+http://localhost:3001
+```
 
 ## Estructura de Directorios
 
-```
+```text
 .
-├── app/                    # Páginas Next.js (Frontend)
-│   ├── dashboard/         # Dashboard con KPIs
-│   ├── products/          # Gestión de productos
-│   ├── entries/           # Módulo de entradas
-│   ├── exits/             # Módulo de salidas
-│   ├── reports/           # Generación de reportes
-│   └── configuration/     # Configuración del sistema
-├── backend/               # API NestJS
+├── app/
+│   ├── dashboard/
+│   ├── products/
+│   ├── entries/
+│   ├── exits/
+│   ├── reports/
+│   └── configuration/
+├── backend/
 │   ├── src/
-│   │   ├── entities/      # Modelos de base de datos
-│   │   ├── services/      # Lógica de negocio
-│   │   ├── controllers/   # Rutas API
-│   │   └── seeds/         # Datos iniciales
-│   └── database.config.ts # Configuración de BD
-├── components/            # Componentes React reutilizables
-├── lib/                   # Utilidades y helpers
-└── public/                # Archivos estáticos
+│   │   ├── entities/
+│   │   ├── services/
+│   │   ├── controllers/
+│   │   ├── modules/
+│   │   ├── guards/
+│   │   └── seeds/
+│   └── database.config.ts
+├── components/
+├── lib/
+└── public/
 ```
 
-## API REST Endpoints
+## API REST
 
 ### Autenticación
-- `POST /api/auth/login` - Iniciar sesión
-- `POST /api/auth/register` - Registrarse
+
+* POST `/api/auth/login`
+* POST `/api/auth/register`
 
 ### Productos
-- `GET /api/products?page=1&limit=10&search=&categoryId=` - Listar productos
-- `GET /api/products/:id` - Obtener producto
-- `POST /api/products` - Crear producto
-- `PUT /api/products/:id` - Actualizar producto
-- `DELETE /api/products/:id` - Eliminar producto
-- `GET /api/products/stats/total` - Total de productos
-- `GET /api/products/stats/stock` - Stock total
-- `GET /api/products/stats/by-category` - Stock por categoría
+
+* GET `/api/products`
+* GET `/api/products/:id`
+* POST `/api/products`
+* PUT `/api/products/:id`
+* DELETE `/api/products/:id`
 
 ### Entradas
-- `GET /api/entries?page=1&limit=10` - Listar entradas
-- `POST /api/entries` - Crear entrada
-- `GET /api/entries/:id` - Obtener entrada
-- `DELETE /api/entries/:id` - Eliminar entrada
-- `GET /api/entries/stats/monthly` - Entradas mensuales
-- `GET /api/entries/stats/total-monthly` - Total mes actual
+
+* GET `/api/entries`
+* POST `/api/entries`
+* GET `/api/entries/:id`
+* DELETE `/api/entries/:id`
 
 ### Salidas
-- `GET /api/exits?page=1&limit=10` - Listar salidas
-- `POST /api/exits` - Crear salida
-- `GET /api/exits/:id` - Obtener salida
-- `DELETE /api/exits/:id` - Eliminar salida
-- `GET /api/exits/stats/monthly` - Salidas mensuales
-- `GET /api/exits/stats/total-monthly` - Total mes actual
+
+* GET `/api/exits`
+* POST `/api/exits`
+* GET `/api/exits/:id`
+* DELETE `/api/exits/:id`
 
 ### Configuración
-- `GET /api/categories/active` - Categorías activas
-- `GET /api/units/active` - Unidades activas
-- `GET /api/suppliers/active?search=` - Proveedores activos
-- `GET /api/clients/active?search=` - Clientes activos
-- `GET /api/users` - Listar usuarios
-- `GET /api/configuration` - Configuración del sistema
-- `PUT /api/configuration` - Actualizar configuración
 
-## Esquema de Base de Datos
+* GET `/api/categories`
+* GET `/api/units`
+* GET `/api/suppliers`
+* GET `/api/clients`
+* GET `/api/users`
+* GET `/api/configuration`
+* PUT `/api/configuration`
+
+## Modelo de Base de Datos
 
 ### Tablas Principales
 
-**users**: Usuarios del sistema con roles y autenticación
-**products**: Catálogo de productos con precio y stock
-**categories**: Categorización de productos
-**units**: Unidades de medida (kg, L, unidades, etc.)
-**entries**: Registro de compras a proveedores
-**entry_items**: Ítems detallados de cada entrada
-**exits**: Registro de ventas a clientes
-**exit_items**: Ítems detallados de cada salida
-**suppliers**: Información de proveedores
-**clients**: Información de clientes con límites de crédito
-**audit**: Registro detallado de todas las acciones
-**configurations**: Configuración global del sistema
+* **users** → Usuarios del sistema.
+* **products** → Catálogo de productos.
+* **categories** → Categorías de productos.
+* **units** → Unidades de medida.
+* **entries** → Entradas de inventario.
+* **entry_items** → Detalles de entradas.
+* **exits** → Salidas de inventario.
+* **exit_items** → Detalles de salidas.
+* **suppliers** → Proveedores.
+* **clients** → Clientes.
+* **audits** → Auditoría del sistema.
+* **configurations** → Configuración general.
 
 ## Seguridad
 
-- ✅ Contraseñas encriptadas con bcryptjs
-- ✅ JWT sin expiración (configurable)
-- ✅ Roles basados en usuarios
-- ✅ CORS habilitado
-- ✅ Validación de entrada con class-validator
-- ✅ Transacciones ACID en operaciones críticas
+* Contraseñas encriptadas mediante bcryptjs.
+* Autenticación basada en JWT.
+* Protección de rutas mediante Guards de NestJS.
+* Validación de datos con Class Validator.
+* Control de acceso por roles.
+* Manejo seguro de excepciones.
+* Protección contra solicitudes inválidas.
+* Transacciones para operaciones críticas.
 
-## Usuarios de Demo
+## Arquitectura
 
-**Administrador**
-- Email: `admin@distribuidora.com`
-- Contraseña: `password123`
-- Rol: Administrador
+El sistema implementa una arquitectura cliente-servidor basada en:
+
+* Frontend desacoplado con Next.js.
+* Backend modular desarrollado con NestJS.
+* Persistencia de datos mediante MySQL.
+* Mapeo objeto-relacional utilizando TypeORM.
+* API REST para comunicación entre servicios.
+* Gestión de autenticación mediante JWT.
+* Control de versiones con Git.
+
+## Pruebas y Consumo de API
+
+Las pruebas funcionales y validaciones de endpoints fueron realizadas utilizando:
+
+* Postman
+* Colecciones de pruebas REST
+* Validación de respuestas HTTP
+* Pruebas de autenticación JWT
+* Verificación de operaciones CRUD
 
 ## Despliegue en Render
 
-### Pasos de Despliegue
+### Backend
 
-1. **Crear nuevos servicios en Render**
-   - Backend: Node.js
-   - Frontend: Static Site (Next.js)
-   - Database: PostgreSQL
+Variables de entorno:
 
-2. **Variables de Entorno (Backend)**
-```
-DB_HOST=<postgres-internal-url>
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=<strong-password>
+```env
+DB_HOST=<mysql-host>
+DB_PORT=3306
+DB_USERNAME=<usuario>
+DB_PASSWORD=<password>
 DB_NAME=distribuidora
-JWT_SECRET=<strong-secret>
+JWT_SECRET=<secret>
 PORT=3001
 ```
 
-3. **Build Command (Backend)**
+Build:
+
 ```bash
-pnpm install && pnpm run build:backend
+pnpm install && pnpm run build
 ```
 
-4. **Start Command (Backend)**
+Start:
+
 ```bash
-cd backend && pnpm start:prod
+pnpm start:prod
 ```
 
-5. **Build Command (Frontend)**
-```bash
-pnpm install && pnpm run build:frontend
-```
+### Frontend
 
-6. **Environment Variables (Frontend)**
-```
+Variables:
+
+```env
 NEXT_PUBLIC_API_URL=<backend-url>
 ```
 
-## Monitoreo y Logs
+Build:
 
-El sistema registra:
-- Inicio/cierre de sesión
-- Creación/modificación/eliminación de datos
-- Cambios en stock
-- Errores y excepciones
-
-Ver logs en tiempo real:
 ```bash
-# Backend
-pnpm dev
-
-# Registros de auditoría
-SELECT * FROM audits ORDER BY createdAt DESC;
+pnpm install && pnpm run build
 ```
 
-## Soporte y Contribuciones
+## Monitoreo y Auditoría
 
-Para reportar bugs o solicitar features, abrir un issue en el repositorio.
+El sistema registra:
+
+* Inicio de sesión.
+* Cierre de sesión.
+* Creación de registros.
+* Actualización de registros.
+* Eliminación de registros.
+* Movimientos de inventario.
+* Errores del sistema.
+* Actividades administrativas.
+
+## Herramientas Implementadas
+
+* Node.js
+* NestJS
+* Next.js
+* TypeORM
+* MySQL
+* JWT
+* Postman
+* Git
+* GitHub
+* Tailwind CSS
+* React
+* Render
 
 ## Licencia
 
-Propietario - 2024
+Propietario - 2026
 
 ---
 
-**Última actualización**: Junio 2024
-**Versión**: 1.0.0
+**Versión:** 1.0.0
+
+**Tecnologías principales:** Node.js, NestJS, Next.js, MySQL, TypeORM, JWT, Git y Postman.
