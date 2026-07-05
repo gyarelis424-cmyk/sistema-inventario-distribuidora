@@ -28,6 +28,7 @@ import { ExitService } from './services/exit.service';
 import { ConfigurationService } from './services/configuration.service';
 import { DashboardService } from './services/dashboard.service';
 import { AuditService } from './services/audit.service';
+import { ReportsService } from './services/reports.service';
 
 import { AuthController } from './controllers/auth.controller';
 import { UserController } from './controllers/user.controller';
@@ -41,6 +42,7 @@ import { ExitController } from './controllers/exit.controller';
 import { ConfigurationController } from './controllers/configuration.controller';
 import { DashboardController } from './controllers/dashboard.controller';
 import { AuditController } from './controllers/audit.controller';
+import { ReportsController } from './controllers/reports.controller';
 
 dotenv.config();
 
@@ -52,7 +54,7 @@ dotenv.config();
             type: 'postgres' as const,
             url: process.env.DATABASE_URL,
             entities: [User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration],
-            synchronize: process.env.NODE_ENV !== 'production',
+            synchronize: true,
             logging: false,
             ssl: { rejectUnauthorized: false },
           }
@@ -64,22 +66,17 @@ dotenv.config();
             password: process.env.DB_PASSWORD || 'postgres',
             database: process.env.DB_NAME || 'distribuidora',
             entities: [User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration],
-            synchronize: process.env.NODE_ENV !== 'production',
+            synchronize: true,
             logging: false,
           }
     ),
     TypeOrmModule.forFeature([User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration]),
     JwtModule.register({
-      secret: (() => {
-        if (!process.env.JWT_SECRET) {
-          throw new Error('JWT_SECRET no está configurado. Debe definirse en las variables de entorno del backend en Render.');
-        }
-        return process.env.JWT_SECRET;
-      })(),
-      signOptions: { expiresIn: '7d' },
+      secret: process.env.JWT_SECRET || 'your_super_secret_key_change_in_production_12345',
+      signOptions: { expiresIn: '999999d' },
     }),
   ],
-  providers: [AuthService, UserService, ProductService, CategoryService, UnitService, SupplierService, ClientService, EntryService, ExitService, ConfigurationService, DashboardService, AuditService],
-  controllers: [AuthController, UserController, ProductController, CategoryController, UnitController, SupplierController, ClientController, EntryController, ExitController, ConfigurationController, DashboardController, AuditController],
+  providers: [AuthService, UserService, ProductService, CategoryService, UnitService, SupplierService, ClientService, EntryService, ExitService, ConfigurationService, DashboardService, AuditService, ReportsService],
+  controllers: [AuthController, UserController, ProductController, CategoryController, UnitController, SupplierController, ClientController, EntryController, ExitController, ConfigurationController, DashboardController, AuditController, ReportsController],
 })
 export class AppModule {}

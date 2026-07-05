@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import MainLayout from '@/components/main-layout';
-import { getExits, getExitById } from '@/lib/api';
-import { Search, Plus, Download, MoreVertical, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { getExits, getExitById, getActiveClients, createExit, deleteExit } from '@/lib/api';
+import { Search, Plus, Download, MoreVertical, ChevronLeft, ChevronRight, Users, Filter, X, Eye, Trash2 } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Modal } from '@/components/ui/modal';
+import { showToast } from '@/components/ui/toast';
 
 export default function ExitsPage() {
   const [exits, setExits] = useState<any[]>([]);
@@ -11,33 +14,67 @@ export default function ExitsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedExit, setSelectedExit] = useState<any>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [clients, setClients] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    loadClients();
     loadExits();
-  }, [page, search]);
+  }, [page, search, clientId, startDate, endDate]);
+
+  const loadClients = async () => {
+    try {
+      const res = await getActiveClients();
+      setClients(Array.isArray(res) ? res : res.data || []);
+    } catch (error) {
+      console.error('[v0] Error loading clients:', error);
+    }
+  };
 
   const loadExits = async () => {
-    setLoading(true);
     try {
-      const data = await getExits(page, 10, search);
-      setExits(data.data);
-      setTotal(data.total);
+      setLoading(true);
+      const data = await getExits(page, 10, search, clientId);
+      setExits(data.data || []);
+      setTotal(data.meta?.total || 0);
     } catch (error) {
-      console.error('Error loading exits:', error);
+      console.error('[v0] Error loading exits:', error);
+      showToast('Error al cargar salidas', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (exitId: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta salida?')) return;
+    try {
+      setIsSubmitting(true);
+      await deleteExit(exitId);
+      showToast('Salida eliminada correctamente', 'success');
+      setShowDetail(false);
+      loadExits();
+    } catch (error: any) {
+      console.error('[v0] Error deleting exit:', error);
+      showToast(error.message || 'Error al eliminar salida', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleExitClick = async (id: string) => {
     try {
       const exit = await getExitById(id);
-      setSelectedExit(exit);
+      setSelectedExit(exit.data || exit);
       setShowDetail(true);
     } catch (error) {
-      console.error('Error loading exit:', error);
+      console.error('[v0] Error loading exit:', error);
+      showToast('Error al cargar salida', 'error');
     }
   };
 
@@ -63,29 +100,94 @@ export default function ExitsPage() {
           </div>
         </div>
 
-        <div className="bg-white border border-border rounded-lg p-4 flex gap-2">
-          <Search size={20} className="text-muted-foreground mt-3" />
-          <input
-            type="text"
-            placeholder="Buscar salida..."
-            value={search}
-            onChange={e => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="flex-1 outline-none text-foreground placeholder-muted-foreground bg-transparent"
-          />
-          <button className="px-4 py-2 border border-border rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-            Filtros
+        <div className="bg-white border border-border rounded-lg p-4 flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-1 min-w-64">
+            <Search size={20} className="text-muted-foreground mt-3" />
+            <input
+              type="text"
+              placeholder="Buscar por número de salida..."
+              value={search}
+              onChange={e => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="flex-1 outline-none text-foreground placeholder-muted-foreground bg-transparent"
+            />
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <Filter size={16} /> Filtros
           </button>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Cargando salidas...</p>
+        {showFilters && (
+          <div className="bg-white border border-border rounded-lg p-4 space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground">Filtros Avanzados</h3>
+              <button
+                onClick={() => {
+                  setShowFilters(false);
+                  setClientId('');
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X size={20} />
+              </button>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Cliente</label>
+                <select
+                  value={clientId}
+                  onChange={(e) => {
+                    setClientId(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Todos los clientes</option>
+                  {clients.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Fecha inicio</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Fecha fin</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <LoadingSpinner fullPage />
+        ) : exits.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No hay salidas registradas
           </div>
         ) : (
           <>
@@ -115,21 +217,17 @@ export default function ExitsPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleExitClick(exit.id)}
-                            className="p-2 hover:bg-muted rounded-lg transition-colors"
+                            className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
+                            title="Ver detalles"
                           >
-                            <MoreVertical size={16} className="text-muted-foreground" />
+                            <Eye size={16} />
                           </button>
                           <button
-                            onClick={() => handleExitClick(exit.id)}
-                            className="p-2 hover:bg-muted rounded-lg transition-colors"
+                            onClick={() => handleDelete(exit.id)}
+                            className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-600"
+                            title="Eliminar"
                           >
-                            <Users size={16} className="text-muted-foreground" />
-                          </button>
-                          <button
-                            onClick={() => handleExitClick(exit.id)}
-                            className="p-2 hover:bg-muted rounded-lg transition-colors text-primary"
-                          >
-                            →
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -223,9 +321,16 @@ export default function ExitsPage() {
               <div className="p-6 border-t border-border flex gap-2 sticky bottom-0 bg-white">
                 <button
                   onClick={() => setShowDetail(false)}
-                  className="flex-1 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
+                  className="flex-1 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
                 >
-                  ← Volver
+                  Cerrar
+                </button>
+                <button
+                  onClick={() => handleDelete(selectedExit.id)}
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {isSubmitting ? 'Eliminando...' : 'Eliminar'}
                 </button>
               </div>
             </div>

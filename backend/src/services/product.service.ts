@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from '../entities/product.entity';
+import { ValidationService } from './validation.service';
 
 @Injectable()
 export class ProductService {
@@ -48,9 +49,23 @@ export class ProductService {
   }
 
   async create(code: string, name: string, price: number, categoryId: string, unitId: string, minimumStock: number, description?: string, imageUrl?: string) {
+    // Validations
+    ValidationService.validateRequired(code, 'Código del producto');
+    ValidationService.validateRequired(name, 'Nombre del producto');
+    ValidationService.validateRequired(categoryId, 'Categoría');
+    ValidationService.validateRequired(unitId, 'Unidad de medida');
+    ValidationService.validatePrice(price, 'Precio del producto');
+    ValidationService.validateQuantity(minimumStock, 'Stock mínimo');
+    
+    if (!ValidationService.isValidProductCode(code)) {
+      throw new BadRequestException('Código de producto inválido (alfanumérico, 3-20 caracteres)');
+    }
+
+    ValidationService.validateStringLength(name, 3, 100, 'Nombre del producto');
+
     const existingProduct = await this.productsRepository.findOne({ where: { code } });
     if (existingProduct) {
-      throw new BadRequestException('Product code already exists');
+      throw new BadRequestException('Código de producto ya existe');
     }
 
     const product = this.productsRepository.create({
@@ -72,7 +87,27 @@ export class ProductService {
   async update(id: string, updates: any) {
     const product = await this.productsRepository.findOne({ where: { id } });
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('Producto no encontrado');
+    }
+
+    // Validate updates
+    if (updates.code && updates.code !== product.code) {
+      const existingProduct = await this.productsRepository.findOne({ where: { code: updates.code } });
+      if (existingProduct) {
+        throw new BadRequestException('Código de producto ya existe');
+      }
+    }
+
+    if (updates.price !== undefined) {
+      ValidationService.validatePrice(updates.price, 'Precio');
+    }
+
+    if (updates.minimumStock !== undefined) {
+      ValidationService.validateQuantity(updates.minimumStock, 'Stock mínimo');
+    }
+
+    if (updates.name) {
+      ValidationService.validateStringLength(updates.name, 3, 100, 'Nombre del producto');
     }
 
     Object.assign(product, updates);

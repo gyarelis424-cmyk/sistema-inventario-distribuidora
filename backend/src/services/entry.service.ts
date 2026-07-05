@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Entry } from '../entities/entry.entity';
 import { EntryItem } from '../entities/entry-item.entity';
 import { Product } from '../entities/product.entity';
+import { ValidationService } from './validation.service';
 
 @Injectable()
 export class EntryService {
@@ -55,6 +56,17 @@ export class EntryService {
   }
 
   async create(supplierId: string, documentNumber: string, entryDate: Date, items: Array<{ productId: string; quantity: number; unitPrice: number }>) {
+    // Validations
+    ValidationService.validateRequired(supplierId, 'Proveedor');
+    ValidationService.validateRequired(documentNumber, 'Número de documento');
+    ValidationService.validateArrayNotEmpty(items, 'Productos');
+    
+    if (!ValidationService.isValidDocumentNumber(documentNumber)) {
+      throw new BadRequestException('Formato de número de documento inválido');
+    }
+
+    ValidationService.validateDateNotFuture(entryDate, 'Fecha de entrada');
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -74,9 +86,13 @@ export class EntryService {
       const savedEntry = await queryRunner.manager.save(entry);
 
       for (const item of items) {
+        // Validate item
+        ValidationService.validateQuantity(item.quantity, 'Cantidad de producto');
+        ValidationService.validatePrice(item.unitPrice, 'Precio unitario');
+
         const product = await queryRunner.manager.findOne(Product, { where: { id: item.productId } });
         if (!product) {
-          throw new BadRequestException(`Product ${item.productId} not found`);
+          throw new BadRequestException(`Producto ${item.productId} no encontrado`);
         }
 
         const subtotal = parseFloat((item.quantity * item.unitPrice).toFixed(2));

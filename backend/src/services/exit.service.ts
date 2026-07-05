@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Exit } from '../entities/exit.entity';
 import { ExitItem } from '../entities/exit-item.entity';
 import { Product } from '../entities/product.entity';
+import { ValidationService } from './validation.service';
 
 @Injectable()
 export class ExitService {
@@ -55,6 +56,17 @@ export class ExitService {
   }
 
   async create(clientId: string, documentNumber: string, exitDate: Date, items: Array<{ productId: string; quantity: number; unitPrice: number }>) {
+    // Validations
+    ValidationService.validateRequired(clientId, 'Cliente');
+    ValidationService.validateRequired(documentNumber, 'Número de documento');
+    ValidationService.validateArrayNotEmpty(items, 'Productos');
+    
+    if (!ValidationService.isValidDocumentNumber(documentNumber)) {
+      throw new BadRequestException('Formato de número de documento inválido');
+    }
+
+    ValidationService.validateDateNotFuture(exitDate, 'Fecha de salida');
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -63,15 +75,19 @@ export class ExitService {
       const exitNumber = `S-${Date.now()}`;
       let totalAmount = 0;
 
+      // Validate all items and check stock first
       for (const item of items) {
+        ValidationService.validateQuantity(item.quantity, 'Cantidad de producto');
+        ValidationService.validatePrice(item.unitPrice, 'Precio unitario');
+
         const product = await queryRunner.manager.findOne(Product, { where: { id: item.productId } });
         if (!product) {
-          throw new BadRequestException(`Product ${item.productId} not found`);
+          throw new BadRequestException(`Producto ${item.productId} no encontrado`);
         }
 
-        if (parseFloat(product.currentStock.toString()) < item.quantity) {
-          throw new BadRequestException(`Insufficient stock for product ${product.name}`);
-        }
+        // Check stock availability with proper validation
+        const currentStock = parseFloat(product.currentStock.toString());
+        ValidationService.validateStockSufficient(currentStock, item.quantity, product.name);
       }
 
       const exit = this.exitsRepository.create({
@@ -86,10 +102,6 @@ export class ExitService {
 
       for (const item of items) {
         const product = await queryRunner.manager.findOne(Product, { where: { id: item.productId } });
-
-        if (!product) {
-          throw new BadRequestException(`Product ${item.productId} not found`);
-        }
 
         const subtotal = parseFloat((item.quantity * item.unitPrice).toFixed(2));
         totalAmount += subtotal;
@@ -121,7 +133,7 @@ export class ExitService {
     }
   }
 
-  async update(id: string, updates: Partial<Exit>) {
+  async update(id: string, updates: any) {
     const exit = await this.exitsRepository.findOne({ where: { id } });
     if (!exit) {
       throw new NotFoundException('Exit not found');

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import MainLayout from '@/components/main-layout';
 import { getEntries, createEntry, deleteEntry, getActiveSuppliers, getProducts } from '@/lib/api';
-import { Search, Plus, ChevronLeft, ChevronRight, Trash2, Eye } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight, Trash2, Eye, Filter, X } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Modal } from '@/components/ui/modal';
@@ -23,6 +23,10 @@ export default function EntriesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [supplierId, setSupplierId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [formData, setFormData] = useState({
     supplierId: '',
     documentNumber: '',
@@ -33,7 +37,7 @@ export default function EntriesPage() {
   useEffect(() => {
     loadSuppliersAndProducts();
     loadEntries();
-  }, [page, search]);
+  }, [page, search, supplierId, startDate, endDate]);
 
   const loadSuppliersAndProducts = async () => {
     try {
@@ -51,7 +55,7 @@ export default function EntriesPage() {
   const loadEntries = async () => {
     try {
       setLoading(true);
-      const data = await getEntries(page, 10, search);
+      const data = await getEntries(page, 10, search, supplierId);
       setEntries(data.data || []);
       setTotal(data.meta?.total || 0);
     } catch (error: any) {
@@ -171,19 +175,88 @@ export default function EntriesPage() {
           </button>
         </div>
 
-        <div className="bg-white border border-border rounded-lg p-4 flex gap-2">
-          <Search size={20} className="text-muted-foreground mt-3" />
-          <input
-            type="text"
-            placeholder="Buscar por número de documento..."
-            value={search}
-            onChange={e => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="flex-1 outline-none text-foreground placeholder-muted-foreground bg-transparent"
-          />
+        <div className="bg-white border border-border rounded-lg p-4 flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-1 min-w-64">
+            <Search size={20} className="text-muted-foreground mt-3" />
+            <input
+              type="text"
+              placeholder="Buscar por número de documento..."
+              value={search}
+              onChange={e => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="flex-1 outline-none text-foreground placeholder-muted-foreground bg-transparent"
+            />
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <Filter size={16} /> Filtros
+          </button>
         </div>
+
+        {showFilters && (
+          <div className="bg-white border border-border rounded-lg p-4 space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground">Filtros Avanzados</h3>
+              <button
+                onClick={() => {
+                  setShowFilters(false);
+                  setSupplierId('');
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Proveedor</label>
+                <select
+                  value={supplierId}
+                  onChange={(e) => {
+                    setSupplierId(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Todos los proveedores</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Fecha inicio</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Fecha fin</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {entries.length === 0 ? (
           <EmptyState
