@@ -1,11 +1,24 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
+function getTokenFromCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  const nameEQ = 'token=';
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    cookie = cookie.trim();
+    if (cookie.startsWith(nameEQ)) {
+      return decodeURIComponent(cookie.substring(nameEQ.length));
+    }
+  }
+  return null;
+}
 
 export async function apiCall(endpoint: string, options: RequestInit = {}) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const token = getTokenFromCookie();
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
   };
 
   if (token) {
@@ -15,9 +28,16 @@ export async function apiCall(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      if (typeof document !== 'undefined') {
+        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
+      throw new Error('Unauthorized');
+    }
     const error = await response.json();
     throw new Error(error.message || 'API Error');
   }
@@ -94,15 +114,29 @@ export async function deleteExit(id: string) {
 }
 
 export async function getDashboardStats() {
-  return Promise.all([
-    apiCall('/api/products/stats/total'),
-    apiCall('/api/products/stats/stock'),
-    apiCall('/api/products/stats/by-category'),
-    apiCall('/api/entries/stats/total-monthly'),
-    apiCall('/api/exits/stats/total-monthly'),
-    apiCall('/api/entries/stats/monthly'),
-    apiCall('/api/exits/stats/monthly'),
-  ]);
+  try {
+    const results = await Promise.allSettled([
+      apiCall('/api/products/stats/total'),
+      apiCall('/api/products/stats/stock'),
+      apiCall('/api/products/stats/by-category'),
+      apiCall('/api/entries/stats/total-monthly'),
+      apiCall('/api/exits/stats/total-monthly'),
+      apiCall('/api/entries/stats/monthly'),
+      apiCall('/api/exits/stats/monthly'),
+    ]);
+
+    return results.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        console.warn(`Dashboard stat ${index} failed:`, result.reason);
+        return { error: true, message: 'Failed to load stat' };
+      }
+    });
+  } catch (error) {
+    console.error('Dashboard stats error:', error);
+    throw error;
+  }
 }
 
 export async function getUsers(page = 1, limit = 10) {

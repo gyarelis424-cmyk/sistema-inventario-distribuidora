@@ -11,8 +11,8 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     router.push('/login');
   };
 

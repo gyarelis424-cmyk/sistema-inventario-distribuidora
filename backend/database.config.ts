@@ -3,18 +3,25 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  username: process.env.DB_USERNAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'distribuidora',
+  
+  url: process.env.DATABASE_URL,
   entities: [
     'backend/src/entities/**/*.entity.ts',
     'backend/dist/entities/**/*.entity.js',
   ],
-  migrations: ['backend/src/migrations/**/*.ts', 'backend/dist/migrations/**/*.js'],
-  synchronize: true,
-  logging: false,
+  migrations: [
+    'backend/src/migrations/**/*.ts',
+    'backend/dist/migrations/**/*.js',
+  ],
+  
+  synchronize: !isProduction,
+  logging: !isProduction,
+  
+  ssl: { 
+    rejectUnauthorized: false 
+  },
 };

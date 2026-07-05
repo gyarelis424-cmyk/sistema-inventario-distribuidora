@@ -40,23 +40,25 @@ import { ConfigurationController } from './controllers/configuration.controller'
 
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432'),
-      username: process.env.DB_USERNAME || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
-      database: process.env.DB_NAME || 'distribuidora',
+      url: process.env.DATABASE_URL,
       entities: [User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration],
-      synchronize: true,
-      logging: false,
+      
+      synchronize: !isProduction,
+      logging: !isProduction,
+      
+      ssl: { rejectUnauthorized: false }, 
     }),
     TypeOrmModule.forFeature([User, Category, Unit, Product, Supplier, Client, Entry, EntryItem, Exit, ExitItem, Audit, Configuration]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'secret',
-      signOptions: { expiresIn: undefined },
+     
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '999999d' },
     }),
   ],
   providers: [AuthService, UserService, ProductService, CategoryService, UnitService, SupplierService, ClientService, EntryService, ExitService, ConfigurationService],

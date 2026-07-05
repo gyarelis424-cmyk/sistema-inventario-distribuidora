@@ -5,11 +5,15 @@ import { AppModule } from './app.module';
 export async function initializeApp() {
   const app = await NestFactory.create(AppModule);
 
+  const corsOrigin = process.env.CORS_ORIGIN || '*';
+  console.log(`[CORS] Configured origin: ${corsOrigin}`);
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: corsOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 200,
   });
 
   app.useGlobalPipes(
