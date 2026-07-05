@@ -456,3 +456,4 @@ export async function getAuditLogs(page: number = 1, limit: number = 10) {
 }
 
 export { ApiError };
+export { apiCall };
